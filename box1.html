@@ -39,12 +39,22 @@
         </select>
         <div>Moves: <span id="step-count">0</span> / <span id="remaining-steps">100</span></div>
         <button id="reset-button">Reset Game</button>
+        <button id="bgm-button">Pause BGM</button>
     </div>
     <div id="game-container"></div>
 
     <script>
+        // Audio setup
+        var bgm = new Audio("mp3/bgm.mp3");
+        bgm.loop = true; // Loop the background music
+        bgm.play().catch(error => console.error("Error playing BGM: ", error));
+
+        var finish = new Audio("mp3/finish.mp3");
+        var move = new Audio("mp3/move.mp3");
+
         const gridSize = 12;
         let playerPos = { x: 0, y: 0 }, boxes = [], goals = [], obstacles = [], stepCount = 0, maxSteps = 100;
+        let bgmPlaying = true;
 
         const initGame = () => {
             document.getElementById('game-container').innerHTML = '';
@@ -121,12 +131,17 @@
                 const boxIndex = boxes.findIndex(b => b.x === newPos.x && b.y === newPos.y);
                 if (boxIndex !== -1) {
                     const nextBoxPos = { x: newPos.x + dx, y: newPos.y + dy };
-                    if (isValidMove(nextBoxPos) && !isBoxOnGoal(boxIndex)) {
+                    if (isValidMove(nextBoxPos)) {
                         boxes[boxIndex] = nextBoxPos;
+                        // Check if the box is now on a goal
+                        if (isBoxOnGoal(boxIndex)) {
+                            finish.play(); // Play finish sound when moving box to goal
+                        }
                     } else return; // Do not move boxes already on the goal
                 }
                 playerPos = newPos;
                 stepCount++;
+                move.play(); // Play move sound when player moves
                 render();
                 checkWin();
             }
@@ -164,6 +179,18 @@
 
         document.getElementById('reset-button').addEventListener('click', initGame);
         document.getElementById('difficulty').addEventListener('change', initGame);
+
+        // BGM control button
+        document.getElementById('bgm-button').addEventListener('click', () => {
+            if (bgmPlaying) {
+                bgm.pause();
+                document.getElementById('bgm-button').innerText = "Play BGM";
+            } else {
+                bgm.play().catch(error => console.error("Error playing BGM: ", error));
+                document.getElementById('bgm-button').innerText = "Pause BGM";
+            }
+            bgmPlaying = !bgmPlaying;
+        });
 
         initGame();
     </script>
