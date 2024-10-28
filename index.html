@@ -14,47 +14,165 @@
             margin: 0;
             background-color: #f0f0f0;
         }
+        #title-screen, #game-screen {
+            text-align: center;
+            width: 100%;
+            max-width: 800px;
+            padding: 20px;
+        }
+        #game-screen {
+            display: none;
+        }
         #game-container {
             display: grid;
             grid-template-columns: repeat(12, 40px);
             grid-template-rows: repeat(12, 40px);
             gap: 2px;
+            margin: 0 auto;
         }
         .cell { width: 40px; height: 40px; border: 1px solid #ccc; }
         .box { background-color: #FFD700; }
         .goal { background-color: #32CD32; }
         .player { background-color: #1E90FF; }
         .obstacle { background-color: #A9A9A9; }
+        .completed-box { 
+            background-color: #90EE90;
+            opacity: 0.7;
+        }
         #info { margin-bottom: 20px; }
+        .guide {
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+            margin: 20px 0;
+        }
+        .guide-item {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+        .color-box {
+            width: 20px;
+            height: 20px;
+        }
+        .button {
+            padding: 10px 20px;
+            font-size: 16px;
+            margin: 10px;
+            cursor: pointer;
+        }
+        #instructions {
+            margin: 20px 0;
+            text-align: left;
+            padding: 20px;
+            background: white;
+            border-radius: 5px;
+        }
     </style>
 </head>
 <body>
-    <div id="info">
-        <h2>Sokoban Game</h2>
-        <label for="difficulty">Select Difficulty:</label>
-        <select id="difficulty">
-            <option value="easy">Easy (4 boxes, 100 moves)</option>
-            <option value="medium">Medium (6 boxes, 70 moves)</option>
-            <option value="hard">Hard (7 boxes, 60 moves)</option>
-        </select>
-        <div>Moves: <span id="step-count">0</span> / <span id="remaining-steps">100</span></div>
-        <button id="reset-button">Reset Game</button>
-        <button id="bgm-button">Pause BGM</button>
+    <div id="title-screen">
+        <h1>Sokoban Game</h1>
+        <div class="guide">
+            <div class="guide-item">
+                <div class="color-box player"></div>
+                <span>Player</span>
+            </div>
+            <div class="guide-item">
+                <div class="color-box box"></div>
+                <span>Box</span>
+            </div>
+            <div class="guide-item">
+                <div class="color-box goal"></div>
+                <span>Goal</span>
+            </div>
+            <div class="guide-item">
+                <div class="color-box obstacle"></div>
+                <span>Obstacle</span>
+            </div>
+        </div>
+        <div id="instructions">
+            <h3>How to Play:</h3>
+            <ul>
+                <li>Use Arrow keys to move the player</li>
+                <li>Push the boxes into the goals to win</li>
+                <li>Boxes will disappear when reaching goals</li>
+                <li>Empty goals can be walked through</li>
+                <li>Use Reset button if you get stuck</li>
+            </ul>
+        </div>
+        <button id="play-button" class="button">Play Game</button>
     </div>
-    <div id="game-container"></div>
+
+    <div id="game-screen">
+        <div id="info">
+            <h2>Sokoban Game</h2>
+            <label for="difficulty">Select Difficulty:</label>
+            <select id="difficulty">
+                <option value="easy">Easy (4 boxes, 100 moves)</option>
+                <option value="medium">Medium (6 boxes, 70 moves)</option>
+                <option value="hard">Hard (7 boxes, 60 moves)</option>
+            </select>
+            <div>Moves: <span id="step-count">0</span> / <span id="remaining-steps">100</span></div>
+            <button id="reset-button" class="button">Reset Game</button>
+            <button id="bgm-button" class="button">Pause BGM</button>
+            <button id="return-title" class="button">Return to Title</button>
+        </div>
+        <div id="game-container"></div>
+    </div>
 
     <script>
-        // Audio setup
-        var bgm = new Audio("mp3/bgm.mp3");
-        bgm.loop = true; // Loop the background music
-        bgm.play().catch(error => console.error("Error playing BGM: ", error));
+        let bgm, finish, move;
+        let audioInitialized = false;
 
-        var finish = new Audio("mp3/finish.mp3");
-        var move = new Audio("mp3/move.mp3");
+        function initAudio() {
+            try {
+                bgm = new Audio("mp3/bgm.mp3");
+                finish = new Audio("mp3/finish.mp3");
+                move = new Audio("mp3/move.mp3");
+
+                bgm.loop = true;
+                
+                // Add error event listeners
+                bgm.addEventListener('error', (e) => {
+                    console.error('Error loading BGM:', e);
+                    alert('Error loading background music');
+                });
+
+                finish.addEventListener('error', (e) => {
+                    console.error('Error loading finish sound:', e);
+                });
+
+                move.addEventListener('error', (e) => {
+                    console.error('Error loading move sound:', e);
+                });
+
+                audioInitialized = true;
+                console.log('Audio initialized successfully');
+            } catch (error) {
+                console.error('Error initializing audio:', error);
+            }
+        }
+
+        window.addEventListener('load', initAudio);
 
         const gridSize = 12;
         let playerPos = { x: 0, y: 0 }, boxes = [], goals = [], obstacles = [], stepCount = 0, maxSteps = 100;
         let bgmPlaying = true;
+
+        document.getElementById('play-button').addEventListener('click', () => {
+            document.getElementById('title-screen').style.display = 'none';
+            document.getElementById('game-screen').style.display = 'block';
+            if (audioInitialized) {
+                bgm.play().catch(error => console.error("Error playing BGM: ", error));
+            }
+            initGame();
+        });
+
+        document.getElementById('return-title').addEventListener('click', () => {
+            document.getElementById('game-screen').style.display = 'none';
+            document.getElementById('title-screen').style.display = 'block';
+        });
 
         const initGame = () => {
             document.getElementById('game-container').innerHTML = '';
@@ -66,7 +184,9 @@
             maxSteps = { easy: 100, medium: 70, hard: 60 }[document.getElementById('difficulty').value];
 
             createGrid();
-            placeElements(4, 5); // Default easy mode
+            const difficultyValue = document.getElementById('difficulty').value;
+            const boxCount = difficultyValue === 'easy' ? 4 : difficultyValue === 'medium' ? 6 : 7;
+            placeElements(boxCount, boxCount);
         };
 
         const createGrid = () => {
@@ -85,17 +205,20 @@
         };
 
         const placeRandomElements = (arr, count, isBox = false) => {
-            const minX = isBox ? 1 : 0; // Prevent box placement on the outer edge
+            const minX = isBox ? 1 : 0;
             const minY = isBox ? 1 : 0;
-            const maxX = gridSize - 2; // Prevent box placement on the outer edge
-            const maxY = gridSize - 2; // Prevent box placement on the outer edge
+            const maxX = gridSize - 2;
+            const maxY = gridSize - 2;
 
             while (arr.length < count) {
                 const pos = { 
                     x: Math.floor(Math.random() * (maxX - minX + 1)) + minX, 
                     y: Math.floor(Math.random() * (maxY - minY + 1)) + minY 
                 };
-                if (!arr.some(e => e.x === pos.x && e.y === pos.y) && !(pos.x === 0 && pos.y === 0)) {
+                if (!arr.some(e => e.x === pos.x && e.y === pos.y) && 
+                    !boxes.some(b => b.x === pos.x && b.y === pos.y) && 
+                    !goals.some(g => g.x === pos.x && g.y === pos.y) && 
+                    !(pos.x === 0 && pos.y === 0)) {
                     arr.push(pos);
                 }
             }
@@ -104,7 +227,9 @@
         const placeObstacles = () => {
             while (obstacles.length < 20) {
                 const pos = { x: Math.floor(Math.random() * gridSize), y: Math.floor(Math.random() * gridSize) };
-                if (!boxes.some(b => b.x === pos.x && b.y === pos.y) && !goals.some(g => g.x === pos.x && g.y === pos.y) && !(pos.x === 0 && pos.y === 0)) {
+                if (!boxes.some(b => b.x === pos.x && b.y === pos.y) && 
+                    !goals.some(g => g.x === pos.x && g.y === pos.y) && 
+                    !(pos.x === 0 && pos.y === 0)) {
                     obstacles.push(pos);
                 }
             }
@@ -113,8 +238,8 @@
         const render = () => {
             const cells = document.querySelectorAll('.cell');
             cells.forEach(cell => cell.className = 'cell');
-            boxes.forEach(box => cells[box.y * gridSize + box.x].classList.add('box'));
             goals.forEach(goal => cells[goal.y * gridSize + goal.x].classList.add('goal'));
+            boxes.forEach(box => cells[box.y * gridSize + box.x].classList.add('box'));
             cells[playerPos.y * gridSize + playerPos.x].classList.add('player');
             obstacles.forEach(obs => cells[obs.y * gridSize + obs.x].classList.add('obstacle'));
             updateStepCount();
@@ -133,15 +258,15 @@
                     const nextBoxPos = { x: newPos.x + dx, y: newPos.y + dy };
                     if (isValidMove(nextBoxPos)) {
                         boxes[boxIndex] = nextBoxPos;
-                        // Check if the box is now on a goal
-                        if (isBoxOnGoal(boxIndex)) {
-                            finish.play(); // Play finish sound when moving box to goal
+                        if (isBoxOnGoal(nextBoxPos)) {
+                            if (audioInitialized) finish.play();
+                            boxes.splice(boxIndex, 1);
                         }
-                    } else return; // Do not move boxes already on the goal
+                    } else return;
                 }
                 playerPos = newPos;
                 stepCount++;
-                move.play(); // Play move sound when player moves
+                if (audioInitialized) move.play();
                 render();
                 checkWin();
             }
@@ -152,13 +277,12 @@
                    !obstacles.some(o => o.x === pos.x && o.y === pos.y);
         };
 
-        const isBoxOnGoal = (boxIndex) => {
-            const box = boxes[boxIndex];
-            return goals.some(goal => box.x === goal.x && box.y === goal.y);
+        const isBoxOnGoal = (pos) => {
+            return goals.some(goal => goal.x === pos.x && goal.y === pos.y);
         };
 
         const checkWin = () => {
-            if (boxes.every(box => goals.some(goal => box.x === goal.x && box.y === goal.y))) {
+            if (boxes.length === 0) {
                 alert('Congratulations! You completed the game!');
                 initGame();
             }
@@ -180,8 +304,9 @@
         document.getElementById('reset-button').addEventListener('click', initGame);
         document.getElementById('difficulty').addEventListener('change', initGame);
 
-        // BGM control button
         document.getElementById('bgm-button').addEventListener('click', () => {
+            if (!audioInitialized) return;
+            
             if (bgmPlaying) {
                 bgm.pause();
                 document.getElementById('bgm-button').innerText = "Play BGM";
@@ -191,8 +316,6 @@
             }
             bgmPlaying = !bgmPlaying;
         });
-
-        initGame();
     </script>
 </body>
 </html>
