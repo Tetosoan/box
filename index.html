@@ -132,8 +132,7 @@
                 move = new Audio("mp3/move.mp3");
 
                 bgm.loop = true;
-                
-                // Add error event listeners
+
                 bgm.addEventListener('error', (e) => {
                     console.error('Error loading BGM:', e);
                     alert('Error loading background music');
@@ -180,7 +179,6 @@
             boxes = [];
             goals = [];
             obstacles = [];
-            playerPos = { x: 0, y: 0 };
             maxSteps = { easy: 100, medium: 70, hard: 60 }[document.getElementById('difficulty').value];
 
             createGrid();
@@ -189,18 +187,26 @@
             placeElements(boxCount, boxCount);
         };
 
+        const placeElements = (boxCount, goalCount) => {
+            placeObstacles();
+            placeRandomElements(boxes, boxCount, true);
+            placeRandomElements(goals, goalCount);
+            placePlayer();
+            render();
+        };
+
+        const placePlayer = () => {
+            do {
+                playerPos.x = Math.floor(Math.random() * gridSize);
+                playerPos.y = Math.floor(Math.random() * gridSize);
+            } while (!isValidPosition(playerPos));
+        };
+
         const createGrid = () => {
             const container = document.getElementById('game-container');
             for (let i = 0; i < gridSize * gridSize; i++) {
                 container.appendChild(document.createElement('div')).classList.add('cell');
             }
-            render();
-        };
-
-        const placeElements = (boxCount, goalCount) => {
-            placeRandomElements(boxes, boxCount, true);
-            placeRandomElements(goals, goalCount);
-            placeObstacles();
             render();
         };
 
@@ -215,21 +221,39 @@
                     x: Math.floor(Math.random() * (maxX - minX + 1)) + minX, 
                     y: Math.floor(Math.random() * (maxY - minY + 1)) + minY 
                 };
-                if (!arr.some(e => e.x === pos.x && e.y === pos.y) && 
+                if (isValidPosition(pos) && 
+                    !arr.some(e => e.x === pos.x && e.y === pos.y) && 
                     !boxes.some(b => b.x === pos.x && b.y === pos.y) && 
-                    !goals.some(g => g.x === pos.x && g.y === pos.y) && 
-                    !(pos.x === 0 && pos.y === 0)) {
+                    !goals.some(g => g.x === pos.x && g.y === pos.y)) {
                     arr.push(pos);
                 }
             }
         };
 
+        const isValidPosition = (pos) => {
+            return pos.x >= 0 && pos.x < gridSize && pos.y >= 0 && pos.y < gridSize &&
+                   !obstacles.some(o => o.x === pos.x && o.y === pos.y) &&
+                   !isAdjacentToObstacle(pos);
+        };
+
+        const isAdjacentToObstacle = (pos) => {
+            const adjacentPositions = [
+                { x: pos.x - 1, y: pos.y },
+                { x: pos.x + 1, y: pos.y },
+                { x: pos.x, y: pos.y - 1 },
+                { x: pos.x, y: pos.y + 1 }
+            ];
+            return adjacentPositions.some(adj => 
+                adj.x >= 0 && adj.x < gridSize &&
+                adj.y >= 0 && adj.y < gridSize &&
+                obstacles.some(o => o.x === adj.x && o.y === adj.y)
+            );
+        };
+
         const placeObstacles = () => {
             while (obstacles.length < 20) {
                 const pos = { x: Math.floor(Math.random() * gridSize), y: Math.floor(Math.random() * gridSize) };
-                if (!boxes.some(b => b.x === pos.x && b.y === pos.y) && 
-                    !goals.some(g => g.x === pos.x && g.y === pos.y) && 
-                    !(pos.x === 0 && pos.y === 0)) {
+                if (isValidPosition(pos)) {
                     obstacles.push(pos);
                 }
             }
